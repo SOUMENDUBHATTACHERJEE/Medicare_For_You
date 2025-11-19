@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hospital Management System - Login</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Segoe UI", sans-serif;
+      }
+      body {
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+        background: #009191;
+      }
+      .split {
+        flex: 1;
+        position: relative;
+      }
+      .split.left {
+        background: #cfd3d3;
+      }
+      .split.right {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #009786;
+      }
+      .hero-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 1;
+      }
+      .login-container {
+        z-index: 2;
+        background: #fff;
+        padding: 2rem;
+        width: 360px;
+        border-radius: 18px;
+        box-shadow: 0 12px 40px rgba(2, 36, 32, 0.12);
+        animation: popUp 0.45s ease;
+      }
+      .login-container h2 {
+        color: #006666;
+        margin-bottom: 8px;
+      }
+      .login-container p {
+        color: #444;
+        margin-bottom: 14px;
+        font-size: 14px;
+      }
+      .login-container input,
+      .login-container select {
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #d7eaea;
+        margin-bottom: 12px;
+        transition: 0.18s;
+      }
+      .login-container input:focus,
+      .login-container select:focus {
+        outline: none;
+        box-shadow: 0 0 8px rgba(0, 153, 153, 0.18);
+        border-color: #009999;
+      }
+      .login-btn {
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        border: 0;
+        background: #009999;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.12s;
+      }
+      .login-btn:hover {
+        transform: translateY(-3px);
+        background: #007777;
+      }
+      @keyframes popUp {
+        from {
+          transform: scale(0.96);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .caption {
+        position: absolute;
+        left: 18px;
+        bottom: 18px;
+        color: #fff;
+        z-index: 2;
+        background: rgba(0, 0, 0, 0.25);
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 13px;
+      }
+      @media (max-width: 820px) {
+        body {
+          flex-direction: column;
+        }
+        .split {
+          height: 45vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- left image: uses the original filename you provided; keep the file in same folder -->
+    <div class="split left" aria-hidden="true">
+      <img
+        id="hero"
+        class="hero-img"
+        src="ChatGPT Image Aug 29, 2025, 09_53_54 PM.png"
+        alt="Hospital hero image"
+        onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1588776814546-ecba1d3f37db?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80'"
+      />
+      <div class="overlay"></div>
+      <div class="caption">MediCare ⁓ Quality care, close to you</div>
+    </div>
+
+    <!-- right: login -->
+    <div class="split right" role="main">
+      <div class="login-container" role="form" aria-labelledby="loginTitle">
+        <h2 id="loginTitle">Welcome Back 👋</h2>
+        <p>Sign in to continue to your dashboard</p>
+
+        <form id="loginForm" autocomplete="on">
+          <!-- use email for Firebase auth; if you want username, change auth accordingly -->
+          <input
+            id="email"
+            type="email"
+            name="email"
+            placeholder="Email"
+            required
+          />
+          <input
+            id="password"
+            type="password"
+            name="password"
+            placeholder="Password"
+            required
+          />
+
+          <select id="role" required aria-label="Select role">
+            <option value="">Select Role</option>
+            <option value="patient">Patient</option>
+            <option value="doctor">Doctor</option>
+            <option value="admin">Admin</option>
+          </select>
+
+          <button type="submit" class="login-btn">Login</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Firebase + Login Handling -->
+    <script type="module">
+      // --- IMPORTANT ---
+      // Replace firebaseConfig values with your project's values from Firebase console.
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+      import {
+        getFirestore,
+        doc,
+        getDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+      const firebaseConfig = {
+        apiKey: "AIzaSyBtBFAFl1zK0j8IaVxx-WWOv6mJA_9sScM",
+        authDomain: "medicare-for-you.firebaseapp.com",
+        projectId: "medicare-for-you",
+        storageBucket: "medicare-for-you.firebasestorage.app",
+        messagingSenderId: "14599880310",
+        appId: "1:14599880310:web:22e826783c0fa6d97fa957",
+        measurementId: "G-3H5CQHK77Z",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      // login form handler
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const email = document.getElementById("email").value.trim();
+          const pass = document.getElementById("password").value;
+          const selectedRole = document.getElementById("role").value;
+
+          if (!email || !pass || !selectedRole) {
+            return alert("Please fill email, password and select role.");
+          }
+
+          try {
+            // sign in
+            const userCred = await signInWithEmailAndPassword(
+              auth,
+              email,
+              pass
+            );
+            const uid = userCred.user.uid;
+
+            // fetch role stored in Firestore under collection "users" (doc id = uid)
+            const userRef = doc(db, "users", uid);
+            const snap = await getDoc(userRef);
+            if (!snap.exists()) {
+              alert("User profile not found in database. Contact admin.");
+              return;
+            }
+
+            const role = snap.data().role;
+            if (role !== selectedRole) {
+              alert("Selected role does not match account role.");
+              return;
+            }
+
+            // redirect based on role
+            if (role === "patient") window.location.href = "patient.html";
+            else if (role === "doctor") window.location.href = "doctor.html";
+            else if (role === "admin") window.location.href = "admin.html";
+          } catch (err) {
+            // friendly error
+            console.error(err);
+            alert("Login failed: " + (err.message || "check credentials"));
+          }
+        });
+    </script>
+    <script>
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          // User not logged in → redirect to correct login page
+          window.location.href = "patient-login.html";
+          return;
+        }
+
+        // If logged in → Allow dashboard to load
+        console.log("User logged in:", user.uid);
+
+        // Optional: Fetch user profile from Firestore
+        const docRef = doc(db, "users", user.uid);
+        const snap = await getDoc(docRef);
+
+        if (!snap.exists()) {
+          alert("User profile not found. Contact admin.");
+          auth.signOut();
+          window.location.href = "patient-login.html";
+          return;
+        }
+
+        const data = snap.data();
+        document.getElementById("patientName").textContent = data.name;
+      });
+    </script>
+  </body>
+</html>
