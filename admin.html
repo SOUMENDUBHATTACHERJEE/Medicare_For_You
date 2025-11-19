@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin Dashboard — Medicare</title>
+
+    <!-- FullCalendar -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
+    <style>
+      :root {
+        --bg: #eef6f9;
+        --accent: #1b7c74;
+        --accent-dark: #145a56;
+        --card: #ffffff;
+        --muted: #6b7c80;
+        --danger: #e63946;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: linear-gradient(180deg, #57988d 0%, #67a89a 100%);
+        color: #053;
+        box-sizing: border-box;
+      }
+      .wrap {
+        max-width: 1300px;
+        margin: 18px auto;
+        padding: 18px;
+        min-height: calc(100vh - 36px);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--accent);
+        padding: 18px 22px;
+        border-radius: 12px;
+        color: #fff;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+      }
+      header h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      .header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .btn {
+        background: var(--accent-dark);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+      }
+      .btn.ghost {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .btn.warn {
+        background: var(--danger);
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 360px 1fr 420px;
+        gap: 18px;
+        margin-top: 18px;
+      }
+      /* left column */
+      .panel {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 6px 18px rgba(3, 3, 3, 0.08);
+      }
+      .panel h2 {
+        margin: 0 0 12px 0;
+        color: var(--accent);
+      }
+      .small {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .list {
+        max-height: 56vh;
+        overflow: auto;
+        padding-right: 8px;
+      }
+      .item {
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #e6f3f2;
+        background: #fbffff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .item .meta {
+        font-size: 14px;
+        color: #123;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+      }
+      /* center - tables and calendar */
+      .center-col {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th,
+      td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+      }
+      th {
+        background: #f2fbfa;
+        color: #145a56;
+      }
+      .search {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      input[type="text"],
+      input[type="number"],
+      select {
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        width: 100%;
+      }
+      /* right column */
+      #calendar {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 10px;
+        box-shadow: 0 6px 18px rgba(3, 3, 3, 0.06);
+      }
+      .full-width {
+        grid-column: 1/-1;
+      }
+      /* modal */
+      .modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 60;
+      }
+      .modal {
+        background: #fff;
+        padding: 18px;
+        border-radius: 12px;
+        width: 540px;
+        max-width: 95%;
+      }
+      .modal h3 {
+        margin-top: 0;
+      }
+      .modal .form-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .modal .form-row > * {
+        flex: 1;
+      }
+      .muted {
+        color: #666;
+        font-size: 13px;
+      }
+      .tiny {
+        font-size: 12px;
+        color: #666;
+      }
+      .pill {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #f1f6f5;
+        color: #145a56;
+        font-weight: 600;
+      }
+      .empty {
+        color: #666;
+        padding: 18px;
+        text-align: center;
+      }
+      /* responsive */
+      @media (max-width: 1100px) {
+        .layout {
+          grid-template-columns: 1fr;
+          padding-bottom: 40px;
+        }
+        #calendar {
+          order: 3;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Admin Dashboard — Medicare</h1>
+        <div class="header-actions">
+          <span class="tiny muted" id="adminName">...</span>
+          <button class="btn ghost" id="refreshBtn">Refresh</button>
+          <button class="btn" id="addDoctorBtn">Add Doctor</button>
+          <button class="btn" id="addPatientBtn">Add Patient</button>
+          <button class="btn warn" id="logoutBtn">Logout</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <!-- LEFT: Quick lists -->
+        <div class="panel">
+          <h2>Quick Overview</h2>
+          <div class="small">Live counts & quick actions</div>
+          <div
+            style="
+              display: flex;
+              gap: 10px;
+              margin-top: 12px;
+              margin-bottom: 12px;
+            "
+          >
+            <div
+              style="
+                flex: 1;
+                padding: 12px;
+                border-radius: 10px;
+                background: #f7ffff;
+                border: 1px solid #d9f0ee;
+              "
+            >
+              <div class="pill" id="countDoctors">Doctors: 0</div>
+              <div class="tiny muted" style="margin-top: 8px">
+                Total doctors
+              </div>
+            </div>
+            <div
+              style="
+                flex: 1;
+                padding: 12px;
+                border-radius: 10px;
+                background: #fff6f6;
+                border: 1px solid #f6dada;
+              "
+            >
+              <div class="pill" id="countPatients">Patients: 0</div>
+              <div class="tiny muted" style="margin-top: 8px">
+                Total patients
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 10px">
+            <input
+              id="quickSearch"
+              type="text"
+              placeholder="Search doctors / patients"
+            />
+            <button class="btn" id="searchBtn">Search</button>
+          </div>
+
+          <h3 style="margin-top: 8px">Recent Doctors</h3>
+          <div class="list" id="recentDoctors"></div>
+
+          <h3 style="margin-top: 8px">Recent Patients</h3>
+          <div class="list" id="recentPatients"></div>
+        </div>
+
+        <!-- CENTER: Tables -->
+        <div class="center-col">
+          <div class="panel">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              "
+            >
+              <h2>Doctors</h2>
+              <div class="tiny muted">Manage doctor profiles</div>
+            </div>
+            <div class="search">
+              <input
+                id="docFilter"
+                type="text"
+                placeholder="Filter doctors by name / specialization"
+              />
+              <select id="docSort">
+                <option value="name">Sort: Name</option>
+                <option value="experience">Sort: Experience</option>
+              </select>
+            </div>
+            <div style="overflow: auto; max-height: 300px">
+              <table id="doctorsTable">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Spec</th>
+                    <th>Exp</th>
+                    <th>Fees</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              "
+            >
+              <h2>Patients</h2>
+              <div class="tiny muted">Manage patient accounts</div>
+            </div>
+            <div class="search">
+              <input
+                id="patFilter"
+                type="text"
+                placeholder="Filter patients by name / phone"
+              />
+              <select id="patSort">
+                <option value="name">Sort: Name</option>
+              </select>
+            </div>
+            <div style="overflow: auto; max-height: 300px">
+              <table id="patientsTable">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              "
+            >
+              <h2>Appointments</h2>
+              <div class="tiny muted">Recent requests & status</div>
+            </div>
+            <div style="margin-top: 8px; margin-bottom: 8px">
+              <select id="apptFilter">
+                <option value="all">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Accepted">Accepted</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+              <button class="btn" id="clearFinished">Remove Completed</button>
+            </div>
+            <div style="overflow: auto; max-height: 260px">
+              <table id="appointmentsTable">
+                <thead>
+                  <tr>
+                    <th>Patient</th>
+                    <th>Doctor</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Calendar & details -->
+        <div class="panel" id="calendarPanel">
+          <h2>Calendar</h2>
+          <div id="calendar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal background -->
+    <div class="modal-bg" id="modalBg">
+      <div class="modal" id="modal">
+        <h3 id="modalTitle">Modal</h3>
+        <div id="modalBody"></div>
+        <div
+          style="
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 12px;
+          "
+        >
+          <button class="btn ghost" id="modalCancel">Cancel</button>
+          <button class="btn" id="modalSave">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Firebase compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+      // ---------- FIREBASE CONFIG (same as other pages) ----------
+      const firebaseConfig = {
+        apiKey: "AIzaSyBtBFAFl1zK0j8IaVxx-WWOv6mJA_9sScM",
+        authDomain: "medicare-for-you.firebaseapp.com",
+        projectId: "medicare-for-you",
+        storageBucket: "medicare-for-you.firebasestorage.app",
+        messagingSenderId: "14599880310",
+        appId: "1:14599880310:web:22e826783c0fa6d97fa957",
+        measurementId: "G-3H5CQHK77Z",
+      };
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
+      // ---------- STATE ----------
+      let currentAdmin = null;
+      let doctorsUnsub = null;
+      let patientsUnsub = null;
+      let apptsUnsub = null;
+      let calendar = null;
+
+      // ---------- UI refs ----------
+      const adminNameEl = document.getElementById("adminName");
+      const countDoctors = document.getElementById("countDoctors");
+      const countPatients = document.getElementById("countPatients");
+      const recentDoctors = document.getElementById("recentDoctors");
+      const recentPatients = document.getElementById("recentPatients");
+      const doctorsTable = document.querySelector("#doctorsTable tbody");
+      const patientsTable = document.querySelector("#patientsTable tbody");
+      const appointmentsTable = document.querySelector(
+        "#appointmentsTable tbody"
+      );
+      const modalBg = document.getElementById("modalBg");
+      const modal = document.getElementById("modal");
+      const modalTitle = document.getElementById("modalTitle");
+      const modalBody = document.getElementById("modalBody");
+      const modalSave = document.getElementById("modalSave");
+      const modalCancel = document.getElementById("modalCancel");
+      const quickSearch = document.getElementById("quickSearch");
+
+      const docFilter = document.getElementById("docFilter");
+      const docSort = document.getElementById("docSort");
+      const patFilter = document.getElementById("patFilter");
+      const apptFilter = document.getElementById("apptFilter");
+
+      // ---------- AUTH CHECK ----------
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) return (window.location.href = "index.html");
+        currentAdmin = user;
+
+        // ensure user role = admin
+        const snap = await db.collection("users").doc(user.uid).get();
+        if (!snap.exists) {
+          alert("Profile missing. Contact owner.");
+          auth.signOut();
+          return (window.location.href = "index.html");
+        }
+        const data = snap.data();
+        if (data.role !== "admin") {
+          alert("Access denied — admins only.");
+          auth.signOut();
+          return (window.location.href = "index.html");
+        }
+        adminNameEl.innerText = data.name || "Administrator";
+
+        // start real-time listeners
+        startListeners();
+        initCalendar();
+      });
+
+      // ---------- START / STOP LISTENERS ----------
+      function startListeners() {
+        // doctors
+        if (doctorsUnsub) doctorsUnsub();
+        doctorsUnsub = db.collection("Doctors").onSnapshot(
+          (snap) => {
+            renderDoctors(snap);
+          },
+          (err) => console.error("Doctors snapshot error:", err)
+        );
+
+        // patients (users with role patient)
+        if (patientsUnsub) patientsUnsub();
+        patientsUnsub = db
+          .collection("users")
+          .where("role", "==", "patient")
+          .onSnapshot(
+            (snap) => {
+              renderPatients(snap);
+            },
+            (err) => console.error("Patients snapshot error:", err)
+          );
+
+        // appointments
+        if (apptsUnsub) apptsUnsub();
+        apptsUnsub = db.collection("appointments").onSnapshot(
+          (snap) => {
+            renderAppointments(snap);
+            refreshCalendarEvents(snap);
+          },
+          (err) => console.error("Appointments snapshot error:", err)
+        );
+      }
+
+      // ---------- RENDERING ----------
+      function renderDoctors(snapshot) {
+        const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        countDoctors.innerText = `Doctors: ${docs.length}`;
+        // recent list
+        recentDoctors.innerHTML = "";
+        docs.slice(0, 6).forEach((d) => {
+          const el = document.createElement("div");
+          el.className = "item";
+          el.innerHTML = `<div class="meta"><strong>${
+            d.name || "—"
+          }</strong><div class="tiny muted">${
+            d.specialization || "Not specified"
+          }</div></div>
+          <div class="controls">
+            <button class="btn ghost" onclick='openEditDoctor(${JSON.stringify(
+              d
+            ).replace(/'/g, "\\'")})'>Edit</button>
+            <button class="btn warn" onclick="deleteDoctor('${
+              d.id
+            }')">Delete</button>
+          </div>`;
+          recentDoctors.appendChild(el);
+        });
+
+        // table
+        doctorsTable.innerHTML = "";
+        // optional sorting
+        const sortBy = docSort.value;
+        if (sortBy === "experience")
+          docs.sort((a, b) => (b.experience || 0) - (a.experience || 0));
+        else docs.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        const filter = (docFilter.value || "").toLowerCase();
+
+        docs.forEach((d) => {
+          if (
+            filter &&
+            !(
+              (d.name || "").toLowerCase().includes(filter) ||
+              (d.specialization || "").toLowerCase().includes(filter)
+            )
+          )
+            return;
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${escapeHtml(d.name || "—")}</td>
+          <td>${escapeHtml(d.specialization || "—")}</td>
+          <td>${d.experience || "—"}</td>
+          <td>₹${d.fees || "—"}</td>
+          <td>
+            <button class="btn ghost" onclick='openEditDoctor(${JSON.stringify(
+              d
+            ).replace(/'/g, "\\'")})'>Edit</button>
+            <button class="btn warn" onclick="deleteDoctor('${
+              d.id
+            }')">Delete</button>
+          </td>`;
+          doctorsTable.appendChild(row);
+        });
+      }
+
+      function renderPatients(snapshot) {
+        const pats = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        countPatients.innerText = `Patients: ${pats.length}`;
+        recentPatients.innerHTML = "";
+        pats.slice(0, 6).forEach((p) => {
+          const el = document.createElement("div");
+          el.className = "item";
+          el.innerHTML = `<div class="meta"><strong>${
+            p.name || "—"
+          }</strong><div class="tiny muted">${
+            p.email || p.phone || "No contact"
+          }</div></div>
+          <div class="controls">
+            <button class="btn ghost" onclick='openEditPatient(${JSON.stringify(
+              p
+            ).replace(/'/g, "\\'")})'>Edit</button>
+            <button class="btn warn" onclick="deletePatient('${
+              p.id
+            }')">Delete</button>
+          </div>`;
+          recentPatients.appendChild(el);
+        });
+
+        patientsTable.innerHTML = "";
+        const filter = (patFilter.value || "").toLowerCase();
+        pats.forEach((p) => {
+          if (
+            filter &&
+            !(
+              (p.name || "").toLowerCase().includes(filter) ||
+              (p.phone || "").toLowerCase().includes(filter)
+            )
+          )
+            return;
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${escapeHtml(p.name || "—")}</td>
+          <td>${escapeHtml(p.phone || p.email || "—")}</td>
+          <td>${escapeHtml(p.role || "—")}</td>
+          <td>
+            <button class="btn ghost" onclick='openEditPatient(${JSON.stringify(
+              p
+            ).replace(/'/g, "\\'")})'>Edit</button>
+            <button class="btn warn" onclick="deletePatient('${
+              p.id
+            }')">Delete</button>
+          </td>`;
+          patientsTable.appendChild(row);
+        });
+      }
+
+      function renderAppointments(snapshot) {
+        const rows = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        // filter by status
+        const f = apptFilter.value;
+        appointmentsTable.innerHTML = "";
+        const filtered = rows.filter((r) =>
+          f === "all" ? true : r.status === f
+        );
+        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+        filtered.forEach((a) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${escapeHtml(a.patientName || "—")}</td>
+          <td>${escapeHtml(a.doctorName || "—")}</td>
+          <td>${escapeHtml(a.date || "—")}</td>
+          <td id="appt-status-${a.id || ""}">${escapeHtml(
+            a.status || "Pending"
+          )}</td>
+          <td>
+            <button class="btn ghost" onclick="viewAppointment('${
+              a.id
+            }')">View</button>
+            <button class="btn" onclick="updateAppointmentStatus('${
+              a.id
+            }','Accepted')">Accept</button>
+            <button class="btn warn" onclick="updateAppointmentStatus('${
+              a.id
+            }','Rejected')">Reject</button>
+            <button class="btn warn" onclick="deleteAppointment('${
+              a.id
+            }')">Delete</button>
+          </td>`;
+          appointmentsTable.appendChild(row);
+        });
+      }
+
+      // ---------- Calendar ----------
+      function initCalendar() {
+        const calendarEl = document.getElementById("calendar");
+        calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: "dayGridMonth",
+          height: 520,
+          events: [], // will be populated
+        });
+        calendar.render();
+      }
+
+      function refreshCalendarEvents(snapshot) {
+        const events = snapshot.docs
+          .map((d) => {
+            const a = d.data();
+            // try parse date (if time not included, FullCalendar will treat as all-day)
+            return {
+              id: d.id,
+              title: `${a.patientName || "Patient"} → ${
+                a.doctorName || "Doctor"
+              }`,
+              start: a.date || null,
+              allDay: true,
+              extendedProps: { status: a.status || "Pending" },
+            };
+          })
+          .filter((e) => e.start);
+        calendar.removeAllEvents();
+        events.forEach((ev) => calendar.addEvent(ev));
+      }
+
+      // ---------- ACTIONS ----------
+      // Add Doctor / Patient modals
+      document
+        .getElementById("addDoctorBtn")
+        .addEventListener("click", () => openAddDoctor());
+      document
+        .getElementById("addPatientBtn")
+        .addEventListener("click", () => openAddPatient());
+      document.getElementById("logoutBtn").addEventListener("click", () => {
+        auth.signOut();
+        window.location.href = "index.html";
+      });
+      document
+        .getElementById("refreshBtn")
+        .addEventListener("click", () => startListeners());
+      document
+        .getElementById("searchBtn")
+        .addEventListener("click", () => doQuickSearch());
+      modalCancel.addEventListener("click", closeModal);
+
+      // quick search
+      function doQuickSearch() {
+        const q = (quickSearch.value || "").toLowerCase().trim();
+        if (!q) return alert("Type a name or phone to search");
+        // open a results modal with combined search
+        modalTitle.innerText = `Search: ${q}`;
+        const html = `<div class="small">Searching doctors & patients...</div>
+        <div style="margin-top:10px"><strong>Doctors</strong><div id="srDoctors"></div></div>
+        <div style="margin-top:10px"><strong>Patients</strong><div id="srPatients"></div></div>`;
+        modalBody.innerHTML = html;
+        modalSave.style.display = "none";
+        showModal();
+        // query
+        db.collection("Doctors")
+          .where("name", "!=", "")
+          .get()
+          .then((snap) => {
+            let htmlD = "";
+            snap.forEach((doc) => {
+              const d = doc.data();
+              if (
+                (d.name || "").toLowerCase().includes(q) ||
+                (d.specialization || "").toLowerCase().includes(q)
+              ) {
+                htmlD += `<div style="padding:6px;border-bottom:1px solid #eee">${escapeHtml(
+                  d.name
+                )} — ${escapeHtml(d.specialization || "")}</div>`;
+              }
+            });
+            document.getElementById("srDoctors").innerHTML =
+              htmlD || '<div class="empty">No doctors</div>';
+          });
+        db.collection("users")
+          .where("role", "==", "patient")
+          .get()
+          .then((snap) => {
+            let htmlP = "";
+            snap.forEach((doc) => {
+              const p = doc.data();
+              if (
+                (p.name || "").toLowerCase().includes(q) ||
+                (p.phone || "").toLowerCase().includes(q)
+              ) {
+                htmlP += `<div style="padding:6px;border-bottom:1px solid #eee">${escapeHtml(
+                  p.name
+                )} — ${escapeHtml(p.phone || p.email || "")}</div>`;
+              }
+            });
+            document.getElementById("srPatients").innerHTML =
+              htmlP || '<div class="empty">No patients</div>';
+          });
+      }
+
+      // View appointment details
+      function viewAppointment(id) {
+        db.collection("appointments")
+          .doc(id)
+          .get()
+          .then((snap) => {
+            if (!snap.exists) return alert("Appointment not found");
+            const a = snap.data();
+            modalTitle.innerText = `Appointment — ${a.patientName || ""}`;
+            modalBody.innerHTML = `
+          <div><b>Patient:</b> ${escapeHtml(a.patientName || "")}</div>
+          <div><b>Doctor:</b> ${escapeHtml(a.doctorName || "")}</div>
+          <div><b>Date:</b> ${escapeHtml(a.date || "")}</div>
+          <div><b>Symptoms:</b> ${escapeHtml(a.symptoms || "")}</div>
+          <div><b>Description:</b> ${escapeHtml(a.description || "")}</div>
+          <div style="margin-top:8px"><b>Status:</b> ${escapeHtml(
+            a.status || "Pending"
+          )}</div>
+          <div style="margin-top:8px"><b>Doctor Notes:</b></div>
+          <textarea id="admNotes" style="width:100%;min-height:100px">${escapeHtml(
+            a.doctorNotes || ""
+          )}</textarea>
+        `;
+            modalSave.style.display = "inline-block";
+            modalSave.onclick = async () => {
+              const notes = document.getElementById("admNotes").value;
+              await db
+                .collection("appointments")
+                .doc(id)
+                .update({ doctorNotes: notes });
+              alert("Notes saved");
+              closeModal();
+            };
+            showModal();
+          });
+      }
+
+      // update appt status
+      async function updateAppointmentStatus(id, status) {
+        await db.collection("appointments").doc(id).update({ status });
+        const el = document.getElementById("appt-status-" + id);
+        if (el) el.innerText = status;
+      }
+
+      // delete appointment
+      async function deleteAppointment(id) {
+        if (!confirm("Delete this appointment?")) return;
+        await db.collection("appointments").doc(id).delete();
+        alert("Deleted");
+      }
+
+      // delete completed appts
+      document
+        .getElementById("clearFinished")
+        .addEventListener("click", async () => {
+          if (!confirm("Remove all Accepted/Rejected appointments?")) return;
+          const snap = await db
+            .collection("appointments")
+            .where("status", "in", ["Accepted", "Rejected"])
+            .get();
+          const batch = db.batch();
+          snap.forEach((doc) => batch.delete(doc.ref));
+          await batch.commit();
+          alert("Removed completed appointments");
+        });
+
+      // ---------- DOCTOR CRUD ----------
+      function openAddDoctor() {
+        modalTitle.innerText = "Add Doctor";
+        modalBody.innerHTML = `
+        <div class="form-row"><input id="d_name" placeholder="Name" /></div>
+        <div class="form-row"><input id="d_spec" placeholder="Specialization" /></div>
+        <div class="form-row"><input id="d_exp" type="number" placeholder="Experience (years)" /></div>
+        <div class="form-row"><input id="d_fees" type="number" placeholder="Fees (₹)" /></div>
+        <div class="form-row"><input id="d_loc" placeholder="Location" /></div>
+      `;
+        modalSave.style.display = "inline-block";
+        modalSave.onclick = async () => {
+          const name = document.getElementById("d_name").value.trim();
+          if (!name) return alert("Name required");
+          const spec = document.getElementById("d_spec").value.trim();
+          await db.collection("Doctors").add({
+            name,
+            specialization: spec,
+            experience: Number(document.getElementById("d_exp").value) || 0,
+            fees: Number(document.getElementById("d_fees").value) || 0,
+            location: document.getElementById("d_loc").value || "",
+          });
+          closeModal();
+        };
+        showModal();
+      }
+
+      function openEditDoctor(data) {
+        // data may be object or stringified form
+        const d = typeof data === "string" ? JSON.parse(data) : data;
+        modalTitle.innerText = `Edit Doctor — ${d.name || ""}`;
+        modalBody.innerHTML = `
+        <div class="form-row"><input id="ed_name" value="${escapeHtmlAttr(
+          d.name || ""
+        )}" placeholder="Name" /></div>
+        <div class="form-row"><input id="ed_spec" value="${escapeHtmlAttr(
+          d.specialization || ""
+        )}" placeholder="Specialization" /></div>
+        <div class="form-row"><input id="ed_exp" type="number" value="${
+          d.experience || 0
+        }" placeholder="Experience" /></div>
+        <div class="form-row"><input id="ed_fees" type="number" value="${
+          d.fees || 0
+        }" placeholder="Fees" /></div>
+        <div class="form-row"><input id="ed_loc" value="${escapeHtmlAttr(
+          d.location || ""
+        )}" placeholder="Location" /></div>
+      `;
+        modalSave.style.display = "inline-block";
+        modalSave.onclick = async () => {
+          const name = document.getElementById("ed_name").value.trim();
+          if (!name) return alert("Name required");
+          await db
+            .collection("Doctors")
+            .doc(d.id)
+            .update({
+              name,
+              specialization: document.getElementById("ed_spec").value.trim(),
+              experience: Number(document.getElementById("ed_exp").value) || 0,
+              fees: Number(document.getElementById("ed_fees").value) || 0,
+              location: document.getElementById("ed_loc").value || "",
+            });
+          closeModal();
+        };
+        showModal();
+      }
+
+      async function deleteDoctor(id) {
+        if (
+          !confirm(
+            "Delete this doctor? This will not delete their auth account."
+          )
+        )
+          return;
+        await db.collection("Doctors").doc(id).delete();
+        alert("Doctor removed");
+      }
+
+      // ---------- PATIENT CRUD ----------
+      function openAddPatient() {
+        modalTitle.innerText = "Add Patient (user)";
+        modalBody.innerHTML = `
+        <div class="form-row"><input id="p_name" placeholder="Full name" /></div>
+        <div class="form-row"><input id="p_email" placeholder="Email (optional)" /></div>
+        <div class="form-row"><input id="p_phone" placeholder="Phone (optional)" /></div>
+      `;
+        modalSave.style.display = "inline-block";
+        modalSave.onclick = async () => {
+          const name = document.getElementById("p_name").value.trim();
+          if (!name) return alert("Name required");
+          // create user doc in 'users' collection (note: no auth account created)
+          await db
+            .collection("users")
+            .add({
+              name,
+              email: document.getElementById("p_email").value || "",
+              phone: document.getElementById("p_phone").value || "",
+              role: "patient",
+            });
+          closeModal();
+        };
+        showModal();
+      }
+
+      function openEditPatient(data) {
+        const p = typeof data === "string" ? JSON.parse(data) : data;
+        modalTitle.innerText = `Edit Patient — ${p.name || ""}`;
+        modalBody.innerHTML = `
+        <div class="form-row"><input id="ep_name" value="${escapeHtmlAttr(
+          p.name || ""
+        )}" placeholder="Name" /></div>
+        <div class="form-row"><input id="ep_email" value="${escapeHtmlAttr(
+          p.email || ""
+        )}" placeholder="Email" /></div>
+        <div class="form-row"><input id="ep_phone" value="${escapeHtmlAttr(
+          p.phone || ""
+        )}" placeholder="Phone" /></div>
+      `;
+        modalSave.style.display = "inline-block";
+        modalSave.onclick = async () => {
+          const name = document.getElementById("ep_name").value.trim();
+          if (!name) return alert("Name required");
+          await db
+            .collection("users")
+            .doc(p.id)
+            .update({
+              name,
+              email: document.getElementById("ep_email").value || "",
+              phone: document.getElementById("ep_phone").value || "",
+            });
+          closeModal();
+        };
+        showModal();
+      }
+
+      async function deletePatient(id) {
+        if (
+          !confirm(
+            "Delete this patient record? This will not delete their Auth account."
+          )
+        )
+          return;
+        await db.collection("users").doc(id).delete();
+        alert("Patient removed");
+      }
+
+      // ---------- UTIL ----------
+      function showModal() {
+        modalBg.style.display = "flex";
+        window.scrollTo(0, 0);
+      }
+      function closeModal() {
+        modalBg.style.display = "none";
+        modalSave.style.display = "inline-block";
+        modalSave.onclick = null;
+        modalBody.innerHTML = "";
+      }
+      function escapeHtml(str) {
+        if (!str) return "";
+        return String(str).replace(
+          /[&<>"']/g,
+          (s) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            }[s])
+        );
+      }
+      function escapeHtmlAttr(str) {
+        return escapeHtml(str).replace(/"/g, "&quot;");
+      }
+
+      // ---------- Misc actions ----------
+      function updateAppointmentStatusBtn(id, status) {
+        updateAppointmentStatus(id, status);
+      }
+
+      // ---------- small helpers ----------
+      window.openEditDoctor = openEditDoctor;
+      window.openEditPatient = openEditPatient;
+
+      // quick filter listeners
+      docFilter.addEventListener("input", () => startListeners());
+      docSort.addEventListener("change", () => startListeners());
+      patFilter.addEventListener("input", () => startListeners());
+      apptFilter.addEventListener("change", () => startListeners());
+
+      // search on Enter
+      quickSearch.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") doQuickSearch();
+      });
+
+      // make sure modal closes when clicking outside
+      modalBg.addEventListener("click", (e) => {
+        if (e.target === modalBg) closeModal();
+      });
+
+      // ---------- helper: render once if needed ----------
+      function refreshCalendarEventsOnDemand() {
+        db.collection("appointments")
+          .get()
+          .then((snap) => refreshCalendarEvents(snap));
+      }
+
+      // ---------- initial small safety: ensure collections exist ----------
+      // (not required — Firestore creates collections on write)
+
+      // End of script
+    </script>
+  </body>
+</html>

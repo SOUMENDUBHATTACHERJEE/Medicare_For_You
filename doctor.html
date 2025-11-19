@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doctor Dashboard</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #eef6f9;
+      }
+      .navbar {
+        background: #1b7c74;
+        padding: 15px;
+        color: white;
+        font-size: 26px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .container {
+        padding: 25px;
+      }
+      .card {
+        background: #fff;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      }
+      .title {
+        font-size: 26px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #145a56;
+      }
+      .btn {
+        padding: 10px 16px;
+        background: #145a56;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .btn:hover {
+        background: #f80202;
+      }
+      .status-btn {
+        padding: 8px 14px;
+        border-radius: 5px;
+        border: none;
+        cursor: pointer;
+        color: white;
+        margin-right: 10px;
+      }
+      .accept {
+        background: #2a9d8f;
+      }
+      .reject {
+        background: #e63946;
+      }
+      .appt-card {
+        border: 1px solid #b8e6e1;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 10px;
+        background: #f9ffff;
+      }
+      .textarea {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        margin-top: 10px;
+      }
+      .save-btn {
+        margin-top: 10px;
+        background: #1b7c74;
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="navbar">
+      <span><b>Doctor Dashboard</b></span>
+      <button class="btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="container">
+      <div class="card">
+        <div class="title">Welcome, <span id="doctorName"></span></div>
+        <p>Your professional information is shown below.</p>
+        <div id="doctorProfile">Loading profile...</div>
+      </div>
+
+      <div class="card">
+        <h3>Patient Appointment Requests</h3>
+        <div id="appointments">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Firebase Compat Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyBtBFAFl1zK0j8IaVxx-WWOv6mJA_9sScM",
+        authDomain: "medicare-for-you.firebaseapp.com",
+        projectId: "medicare-for-you",
+        storageBucket: "medicare-for-you.firebasestorage.app",
+        messagingSenderId: "14599880310",
+        appId: "1:14599880310:web:22e826783c0fa6d97fa957",
+        measurementId: "G-3H5CQHK77Z",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      let currentDoctorId = null;
+
+      // LOGIN CHECK
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) return (window.location.href = "index.html");
+        currentDoctorId = user.uid;
+
+        // Load doctor profile
+        const docSnap = await db
+          .collection("Doctors")
+          .doc(currentDoctorId)
+          .get();
+        if (!docSnap.exists) return alert("Doctor profile not found!");
+
+        let d = docSnap.data();
+        document.getElementById("doctorName").innerText = d.name;
+        document.getElementById("doctorProfile").innerHTML = `
+    <b>Name:</b> ${d.name}<br>
+    <b>Specialization:</b> ${d.specialization}<br>
+    <b>Experience:</b> ${d.experience || "N/A"} years<br>
+    <b>Location:</b> ${d.location || "N/A"}<br>
+    <b>Consultation Fee:</b> ₹${d.fees || "N/A"}<br>
+  `;
+
+        loadAppointments(); // Load appointments in real-time
+      });
+
+      // LOAD PATIENT APPOINTMENTS (real-time)
+      function loadAppointments() {
+        const div = document.getElementById("appointments");
+
+        db.collection("appointments")
+          .where("doctorId", "==", currentDoctorId)
+          .onSnapshot((snapshot) => {
+            if (snapshot.empty) {
+              div.innerHTML = "No appointment requests.";
+              return;
+            }
+
+            let html = "";
+            snapshot.forEach((doc) => {
+              const a = doc.data();
+              html += `
+          <div class="appt-card">
+            <b>Patient Name:</b> ${a.patientName}<br>
+            ${a.age ? `<b>Age:</b> ${a.age}<br>` : ""}
+            ${a.gender ? `<b>Gender:</b> ${a.gender}<br>` : ""}
+            ${a.phone ? `<b>Phone:</b> ${a.phone}<br>` : ""}
+            <br>
+            <b>Symptoms:</b> ${a.symptoms}<br>
+            <b>Description:</b> ${a.description}<br>
+            <b>Preferred Date:</b> ${a.date}<br>
+            <br>
+            <b>Status:</b> <span id="status-${doc.id}">${
+                a.status
+              }</span><br><br>
+            <button class="status-btn accept" onclick="updateStatus('${
+              doc.id
+            }','Accepted')">Accept</button>
+            <button class="status-btn reject" onclick="updateStatus('${
+              doc.id
+            }','Rejected')">Reject</button>
+            <br><br>
+            <b>Doctor Notes:</b><br>
+            <textarea class="textarea" id="notes-${
+              doc.id
+            }" placeholder="Write notes...">${a.doctorNotes || ""}</textarea>
+            <button class="save-btn" onclick="saveNotes('${
+              doc.id
+            }')">Save Notes</button>
+          </div>
+        `;
+            });
+            div.innerHTML = html;
+          });
+      }
+
+      // UPDATE STATUS
+      async function updateStatus(id, status) {
+        await db.collection("appointments").doc(id).update({ status });
+        document.getElementById("status-" + id).innerText = status;
+        alert("Status updated to " + status);
+      }
+
+      // SAVE DOCTOR NOTES
+      async function saveNotes(id) {
+        const notes = document.getElementById("notes-" + id).value;
+        await db
+          .collection("appointments")
+          .doc(id)
+          .update({ doctorNotes: notes });
+        alert("Notes saved!");
+      }
+
+      // LOGOUT
+      function logout() {
+        auth.signOut();
+        window.location.href = "index.html";
+      }
+    </script>
+  </body>
+</html>
