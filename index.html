@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -129,7 +129,11 @@
         class="hero-img"
         src="ChatGPT Image Aug 29, 2025, 09_53_54 PM.png"
         alt="Hospital hero image"
-        onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1588776814546-ecba1d3f37db?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80'"
+        onerror="
+          this.onerror = null;
+          this.src =
+            'https://images.unsplash.com/photo-1588776814546-ecba1d3f37db?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80';
+        "
       />
       <div class="overlay"></div>
       <div class="caption">MediCare ⁓ Quality care, close to you</div>
@@ -218,7 +222,7 @@
             const userCred = await signInWithEmailAndPassword(
               auth,
               email,
-              pass
+              pass,
             );
             const uid = userCred.user.uid;
 

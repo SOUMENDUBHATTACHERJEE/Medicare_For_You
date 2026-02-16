@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Medicine Finder</title>
+
+    <!-- Leaflet (FREE MAP) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #eef6f9;
+      }
+
+      .navbar {
+        background: #41837d;
+        padding: 15px;
+        color: white;
+        font-size: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .btn {
+        padding: 10px 16px;
+        background: #145a56;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .btn:hover {
+        background: #e63946;
+      }
+
+      .container {
+        padding: 25px;
+      }
+
+      .card {
+        background: #fff;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      input {
+        width: 100%;
+        padding: 10px;
+        margin-top: 8px;
+        margin-bottom: 15px;
+        border-radius: 6px;
+        border: 1px solid #bbb;
+      }
+
+      #map {
+        width: 100%;
+        height: 400px;
+        border-radius: 10px;
+        margin-top: 15px;
+      }
+
+      .result-box {
+        background: #f7ffff;
+        border: 1px solid #b8e6e1;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="navbar">
+      <span><b>Medicine & Pharmacy Finder</b></span>
+      <div>
+        <button class="btn" onclick="window.location.href = 'patient.html'">
+          Back
+        </button>
+        <button class="btn" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="container">
+      <!-- MEDICINE SEARCH -->
+      <div class="card">
+        <h3>Search Medicine by Disease</h3>
+        <input
+          type="text"
+          id="diseaseInput"
+          placeholder="Enter disease (e.g. Fever)"
+        />
+        <button class="btn" onclick="searchMedicine()">Search</button>
+        <div id="medicineResult"></div>
+      </div>
+
+      <!-- MAP -->
+      <div class="card">
+        <h3>Nearby Pharmacies</h3>
+        <div id="map"></div>
+      </div>
+    </div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyBtBFAFl1zK0j8IaVxx-WWOv6mJA_9sScM",
+        authDomain: "medicare-for-you.firebaseapp.com",
+        projectId: "medicare-for-you",
+        storageBucket: "medicare-for-you.firebasestorage.app",
+        messagingSenderId: "14599880310",
+        appId: "1:14599880310:web:22e826783c0fa6d97fa957",
+        measurementId: "G-3H5CQHK77Z",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
+      auth.onAuthStateChanged((user) => {
+        if (!user) {
+          window.location.href = "index.html";
+        }
+      });
+
+      function logout() {
+        auth.signOut().then(() => {
+          window.location.href = "index.html";
+        });
+      }
+
+      // SEARCH MEDICINE
+      async function searchMedicine() {
+        const disease = document.getElementById("diseaseInput").value.trim();
+        if (!disease) {
+          alert("Please enter a disease name.");
+          return;
+        }
+
+        const snapshot = await db
+          .collection("medicines")
+          .where("disease", "==", disease)
+          .get();
+
+        if (snapshot.empty) {
+          document.getElementById("medicineResult").innerHTML =
+            "<p>No data found for this disease.</p>";
+          return;
+        }
+
+        let data = snapshot.docs[0].data();
+
+        document.getElementById("medicineResult").innerHTML = `
+    <div class="result-box">
+      <b>Disease:</b> ${data.disease}<br><br>
+      <b>Suggested Medicines:</b><br>
+      ${data.medicines.map((m) => "• " + m).join("<br>")}
+      <br><br>
+      <b>Precautions:</b><br>
+      ${data.precautions}
+    </div>
+  `;
+      }
+    </script>
+
+    <!-- OPENSTREETMAP SCRIPT -->
+    <script>
+      let map;
+
+      function initMap(lat, lon) {
+        map = L.map("map").setView([lat, lon], 14);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap contributors",
+        }).addTo(map);
+
+        L.marker([lat, lon]).addTo(map).bindPopup("You are here").openPopup();
+
+        findNearbyPharmacies(lat, lon);
+      }
+
+      function findNearbyPharmacies(lat, lon) {
+        const radius = 3000;
+
+        const overpassUrl = `https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="pharmacy"](around:${radius},${lat},${lon});out;`;
+
+        fetch(overpassUrl)
+          .then((response) => response.json())
+          .then((data) => {
+            data.elements.forEach((place) => {
+              if (place.lat && place.lon) {
+                L.marker([place.lat, place.lon])
+                  .addTo(map)
+                  .bindPopup(place.tags.name || "Pharmacy");
+              }
+            });
+          });
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          initMap(position.coords.latitude, position.coords.longitude);
+        },
+        () => {
+          alert("Location access denied.");
+        },
+      );
+    </script>
+  </body>
+</html>

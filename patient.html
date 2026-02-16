@@ -1,9 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Patient Portal</title>
+
+    <!-- Leaflet (Free Map) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <style>
       body {
@@ -64,18 +68,15 @@
         border: 1px solid #bbb;
       }
 
-      .doctor-card {
-        padding: 12px;
-        border-radius: 8px;
-        background: #f7ffff;
-        border: 1px solid #b8e6e1;
-        margin-bottom: 10px;
+      #medicineMap {
+        height: 350px;
+        border-radius: 10px;
+        margin-top: 15px;
       }
     </style>
   </head>
 
   <body>
-    <!-- NAVBAR -->
     <div class="navbar">
       <span><b>Patient Dashboard</b></span>
       <button class="btn" onclick="logout()">Logout</button>
@@ -88,10 +89,19 @@
         <p>Your health is our priority.</p>
       </div>
 
-      <!-- Profile -->
+      <!-- Medicine Search Section -->
       <div class="card">
-        <h3>Your Profile</h3>
-        <div id="profileData">Loading...</div>
+        <h3>Search Medicines (Alternative to Appointment)</h3>
+
+        <input
+          type="text"
+          id="altDisease"
+          placeholder="Enter disease (e.g. Fever)"
+        />
+        <button class="btn" onclick="searchAltMedicine()">Search</button>
+
+        <div id="altMedicineResult"></div>
+        <div id="medicineMap"></div>
       </div>
 
       <!-- Appointment Form -->
@@ -99,46 +109,25 @@
         <h3>Book an Appointment</h3>
 
         <label>Select Doctor</label>
-        <select id="doctorSelect" required>
-          <option disabled>Loading doctors...</option>
-        </select>
+        <select id="doctorSelect"></select>
 
         <label>Preferred Date</label>
         <input type="date" id="apptDate" />
 
         <label>Your Symptoms</label>
-        <textarea id="symptoms" rows="3"></textarea>
+        <textarea id="symptoms"></textarea>
 
         <label>Description</label>
-        <textarea id="description" rows="4"></textarea>
+        <textarea id="description"></textarea>
 
         <button class="btn" onclick="bookAppointment()">Submit</button>
-
         <p id="appointmentMsg" style="color: green"></p>
-      </div>
-
-      <!-- Doctor Search -->
-      <div class="card">
-        <h3>Search Doctors</h3>
-
-        <label>Max Budget (₹)</label>
-        <input type="number" id="budget" placeholder="Ex: 500" />
-
-        <label>Minimum Experience (Years)</label>
-        <input type="number" id="experience" placeholder="Ex: 5" />
-
-        <label>Location</label>
-        <input type="text" id="location" placeholder="Enter city" />
-
-        <button class="btn" onclick="searchDoctors()">Search</button>
-
-        <div id="searchResults" style="margin-top: 15px"></div>
       </div>
 
       <!-- Appointments -->
       <div class="card">
         <h3>Your Appointments</h3>
-        <div id="appointments">Loading...</div>
+        <div id="appointments"></div>
       </div>
     </div>
 
@@ -148,7 +137,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <script>
-      // Firebase Config
       const firebaseConfig = {
         apiKey: "AIzaSyBtBFAFl1zK0j8IaVxx-WWOv6mJA_9sScM",
         authDomain: "medicare-for-you.firebaseapp.com",
@@ -164,88 +152,102 @@
       const db = firebase.firestore();
 
       let currentUser = null;
+      let medMap = null;
 
-      // ---------------------------
-      // CHECK LOGIN & LOAD PROFILE + DOCTORS
-      // ---------------------------
       auth.onAuthStateChanged(async (user) => {
         if (!user) return (window.location.href = "index.html");
-
         currentUser = user;
-        const uid = user.uid;
 
-        try {
-          // Load Patient Profile
-          // Query the "users" collection for the current user with role = "patient"
-          const userQuery = await db
-            .collection("users")
-            .where(firebase.firestore.FieldPath.documentId(), "==", uid)
-            .where("role", "==", "patient")
-            .get();
+        const snap = await db.collection("users").doc(user.uid).get();
+        const data = snap.data();
 
-          if (userQuery.empty) {
-            throw new Error("Patient data not found in users collection");
-          }
-
-          const data = userQuery.docs[0].data();
-
-          document.getElementById("patientName").innerText = data.name;
-          document.getElementById("profileData").innerHTML = `
-            <b>Name:</b> ${data.name}<br>
-            <b>Age:</b> ${data.age}<br>
-            <b>Gender:</b> ${data.gender}<br>
-            <b>Phone:</b> ${data.phone}<br>
-          `;
-
-          // Load Appointments
-          loadAppointments();
-
-          // Load Doctors Dropdown (Real-time with debug)
-          const select = document.getElementById("doctorSelect");
-          select.innerHTML = `<option disabled>Loading doctors...</option>`;
-
-          // Try lowercase first
-          let collectionRef = db.collection("doctors");
-          collectionRef.get().then((snapshot) => {
-            if (snapshot.empty) {
-              // Try uppercase "Doctors"
-              collectionRef = db.collection("Doctors");
-            }
-            collectionRef.onSnapshot(
-              (snapshot) => {
-                console.log(
-                  "Doctors snapshot:",
-                  snapshot.docs.map((d) => d.data())
-                ); // Debug
-                select.innerHTML = "";
-                if (snapshot.empty) {
-                  select.innerHTML = `<option disabled>No doctors available</option>`;
-                  return;
-                }
-                snapshot.forEach((doc) => {
-                  const d = doc.data();
-                  if (d.name && d.specialization) {
-                    const option = document.createElement("option");
-                    option.value = doc.id;
-                    option.textContent = `${d.name} (${d.specialization})`;
-                    select.appendChild(option);
-                  }
-                });
-              },
-              (err) => {
-                console.error("Error loading doctors:", err);
-                select.innerHTML = `<option disabled>Error loading doctors</option>`;
-              }
-            );
-          });
-        } catch (err) {
-          console.error("Error loading patient data:", err);
-        }
+        document.getElementById("patientName").innerText = data.name;
+        loadAppointments();
+        loadDoctors();
       });
 
-      // ---------------------------
-      // LOAD APPOINTMENTS
-      // ---------------------------
+      // =======================
+      // MEDICINE SEARCH + MAP
+      // =======================
+      async function searchAltMedicine() {
+        const disease = document.getElementById("altDisease").value.trim();
+        if (!disease) return alert("Enter disease.");
+
+        const snapshot = await db
+          .collection("medicines")
+          .where("disease", "==", disease)
+          .get();
+
+        if (snapshot.empty) {
+          document.getElementById("altMedicineResult").innerHTML =
+            "<p>No data found.</p>";
+          return;
+        }
+
+        const data = snapshot.docs[0].data();
+
+        document.getElementById("altMedicineResult").innerHTML = `
+    <div style="background:#f7ffff;border:1px solid #b8e6e1;padding:15px;border-radius:8px;margin-top:15px;">
+      <b>Disease:</b> ${data.disease}<br><br>
+      <b>Suggested Medicines:</b><br>
+      ${data.medicines.map((m) => "• " + m).join("<br>")}
+      <br><br>
+      <b>Precautions:</b><br>
+      ${data.precautions}
+      <br><br>
+      <button class="btn" onclick="scrollToAppointment()">Consult Doctor</button>
+    </div>
+  `;
+
+        loadPharmacyMap();
+      }
+
+      function scrollToAppointment() {
+        document
+          .getElementById("doctorSelect")
+          .scrollIntoView({ behavior: "smooth" });
+      }
+
+      // FREE MAP
+      function loadPharmacyMap() {
+        if (!navigator.geolocation) return alert("Location not supported");
+
+        navigator.geolocation.getCurrentPosition((position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+
+          if (medMap) medMap.remove();
+
+          medMap = L.map("medicineMap").setView([lat, lon], 14);
+
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "&copy; OpenStreetMap contributors",
+          }).addTo(medMap);
+
+          L.marker([lat, lon])
+            .addTo(medMap)
+            .bindPopup("You are here")
+            .openPopup();
+
+          const overpassUrl = `https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="pharmacy"](around:3000,${lat},${lon});out;`;
+
+          fetch(overpassUrl)
+            .then((res) => res.json())
+            .then((data) => {
+              data.elements.forEach((place) => {
+                if (place.lat && place.lon) {
+                  L.marker([place.lat, place.lon])
+                    .addTo(medMap)
+                    .bindPopup(place.tags.name || "Pharmacy");
+                }
+              });
+            });
+        });
+      }
+
+      // =======================
+      // APPOINTMENTS
+      // =======================
       async function loadAppointments() {
         const ref = await db
           .collection("appointments")
@@ -262,30 +264,39 @@
         ref.forEach((doc) => {
           let a = doc.data();
           html += `
-            <div style="padding:10px;border-bottom:1px solid #ccc;">
-              <b>Doctor:</b> ${a.doctorName}<br>
-              <b>Date:</b> ${a.date}<br>
-              <b>Status:</b> ${a.status}
-            </div>
-          `;
+      <div style="padding:10px;border-bottom:1px solid #ccc;">
+        <b>Doctor:</b> ${a.doctorName}<br>
+        <b>Date:</b> ${a.date}<br>
+        <b>Status:</b> ${a.status}
+      </div>
+    `;
         });
 
         document.getElementById("appointments").innerHTML = html;
       }
 
-      // ---------------------------
-      // BOOK APPOINTMENT
-      // ---------------------------
+      async function loadDoctors() {
+        const snapshot = await db.collection("Doctors").get();
+        const select = document.getElementById("doctorSelect");
+        select.innerHTML = "";
+
+        snapshot.forEach((doc) => {
+          const d = doc.data();
+          const option = document.createElement("option");
+          option.value = doc.id;
+          option.textContent = `${d.name} (${d.specialization})`;
+          select.appendChild(option);
+        });
+      }
+
       async function bookAppointment() {
         let doctorId = document.getElementById("doctorSelect").value;
         let date = document.getElementById("apptDate").value;
         let symptoms = document.getElementById("symptoms").value;
         let desc = document.getElementById("description").value;
 
-        if (!doctorId || !date || !symptoms) {
-          alert("Please fill all fields!");
-          return;
-        }
+        if (!doctorId || !date || !symptoms)
+          return alert("Please fill required fields.");
 
         const docRef = await db.collection("Doctors").doc(doctorId).get();
         const doctorData = docRef.data();
@@ -306,48 +317,6 @@
         loadAppointments();
       }
 
-      // ---------------------------
-      // SEARCH DOCTORS
-      // ---------------------------
-      async function searchDoctors() {
-        let budget = document.getElementById("budget").value;
-        let exp = document.getElementById("experience").value;
-        let loc = document.getElementById("location").value.toLowerCase();
-
-        const ref = await db.collection("Doctors").get();
-
-        let results = [];
-
-        ref.forEach((doc) => {
-          const d = doc.data();
-
-          if (budget && d.fees > budget) return;
-          if (exp && d.experience < exp) return;
-          if (loc && d.location.toLowerCase() !== loc) return;
-
-          results.push(d);
-        });
-
-        let html = "";
-        results.forEach((d) => {
-          html += `
-            <div class="doctor-card">
-              <b>${d.name}</b> (${d.specialization})<br>
-              Fees: ₹${d.fees}<br>
-              Experience: ${d.experience} yrs<br>
-              Location: ${d.location}<br>
-            </div>
-          `;
-        });
-
-        document.getElementById("searchResults").innerHTML = results.length
-          ? html
-          : "No doctors found.";
-      }
-
-      // ---------------------------
-      // LOGOUT
-      // ---------------------------
       function logout() {
         auth.signOut().then(() => (window.location.href = "index.html"));
       }
