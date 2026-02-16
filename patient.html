@@ -68,6 +68,10 @@
         border: 1px solid #bbb;
       }
 
+      #suggestions div:hover {
+        background: #f0f0f0;
+      }
+
       #medicineMap {
         height: 350px;
         border-radius: 10px;
@@ -89,7 +93,7 @@
         <p>Your health is our priority.</p>
       </div>
 
-      <!-- Medicine Search Section -->
+      <!-- MEDICINE SEARCH SECTION -->
       <div class="card">
         <h3>Search Medicines (Alternative to Appointment)</h3>
 
@@ -97,14 +101,28 @@
           type="text"
           id="altDisease"
           placeholder="Enter disease (e.g. Fever)"
+          oninput="showSuggestions()"
         />
+
+        <div
+          id="suggestions"
+          style="
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+          "
+        ></div>
+
         <button class="btn" onclick="searchAltMedicine()">Search</button>
 
         <div id="altMedicineResult"></div>
         <div id="medicineMap"></div>
       </div>
 
-      <!-- Appointment Form -->
+      <!-- APPOINTMENT FORM -->
       <div class="card">
         <h3>Book an Appointment</h3>
 
@@ -124,7 +142,7 @@
         <p id="appointmentMsg" style="color: green"></p>
       </div>
 
-      <!-- Appointments -->
+      <!-- APPOINTMENTS LIST -->
       <div class="card">
         <h3>Your Appointments</h3>
         <div id="appointments"></div>
@@ -156,26 +174,81 @@
 
       auth.onAuthStateChanged(async (user) => {
         if (!user) return (window.location.href = "index.html");
+
         currentUser = user;
 
         const snap = await db.collection("users").doc(user.uid).get();
-        const data = snap.data();
+        document.getElementById("patientName").innerText = snap.data().name;
 
-        document.getElementById("patientName").innerText = data.name;
-        loadAppointments();
         loadDoctors();
+        loadAppointments();
       });
 
-      // =======================
-      // MEDICINE SEARCH + MAP
-      // =======================
+      function logout() {
+        auth.signOut().then(() => (window.location.href = "index.html"));
+      }
+
+      function scrollToAppointment() {
+        document
+          .getElementById("doctorSelect")
+          .scrollIntoView({ behavior: "smooth" });
+      }
+
+      /* =======================
+   AUTO SUGGESTIONS
+======================= */
+      async function showSuggestions() {
+        const input = document
+          .getElementById("altDisease")
+          .value.trim()
+          .toLowerCase();
+
+        const suggestionBox = document.getElementById("suggestions");
+
+        if (!input) {
+          suggestionBox.innerHTML = "";
+          return;
+        }
+
+        const snapshot = await db.collection("medicines").get();
+        let matches = [];
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.diseaseLower.includes(input)) {
+            matches.push(data.disease);
+          }
+        });
+
+        suggestionBox.innerHTML = matches
+          .map(
+            (d) =>
+              `<div style="padding:8px;cursor:pointer;"
+          onclick="selectSuggestion('${d}')">${d}</div>`,
+          )
+          .join("");
+      }
+
+      function selectSuggestion(disease) {
+        document.getElementById("altDisease").value = disease;
+        document.getElementById("suggestions").innerHTML = "";
+        searchAltMedicine();
+      }
+
+      /* =======================
+   MEDICINE SEARCH
+======================= */
       async function searchAltMedicine() {
-        const disease = document.getElementById("altDisease").value.trim();
-        if (!disease) return alert("Enter disease.");
+        const diseaseInput = document
+          .getElementById("altDisease")
+          .value.trim()
+          .toLowerCase();
+
+        if (!diseaseInput) return alert("Enter disease.");
 
         const snapshot = await db
           .collection("medicines")
-          .where("disease", "==", disease)
+          .where("diseaseLower", "==", diseaseInput)
           .get();
 
         if (snapshot.empty) {
@@ -187,7 +260,8 @@
         const data = snapshot.docs[0].data();
 
         document.getElementById("altMedicineResult").innerHTML = `
-    <div style="background:#f7ffff;border:1px solid #b8e6e1;padding:15px;border-radius:8px;margin-top:15px;">
+    <div style="background:#f7ffff;border:1px solid #b8e6e1;
+                padding:15px;border-radius:8px;margin-top:15px;">
       <b>Disease:</b> ${data.disease}<br><br>
       <b>Suggested Medicines:</b><br>
       ${data.medicines.map((m) => "• " + m).join("<br>")}
@@ -195,22 +269,20 @@
       <b>Precautions:</b><br>
       ${data.precautions}
       <br><br>
-      <button class="btn" onclick="scrollToAppointment()">Consult Doctor</button>
+      <button class="btn" onclick="scrollToAppointment()">
+        Consult Doctor
+      </button>
     </div>
   `;
 
         loadPharmacyMap();
       }
 
-      function scrollToAppointment() {
-        document
-          .getElementById("doctorSelect")
-          .scrollIntoView({ behavior: "smooth" });
-      }
-
-      // FREE MAP
+      /* =======================
+   FREE PHARMACY MAP
+======================= */
       function loadPharmacyMap() {
-        if (!navigator.geolocation) return alert("Location not supported");
+        if (!navigator.geolocation) return;
 
         navigator.geolocation.getCurrentPosition((position) => {
           const lat = position.coords.latitude;
@@ -229,7 +301,8 @@
             .bindPopup("You are here")
             .openPopup();
 
-          const overpassUrl = `https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="pharmacy"](around:3000,${lat},${lon});out;`;
+          const overpassUrl = `https://overpass-api.de/api/interpreter?data=[out:json];
+       node["amenity"="pharmacy"](around:3000,${lat},${lon});out;`;
 
           fetch(overpassUrl)
             .then((res) => res.json())
@@ -245,36 +318,9 @@
         });
       }
 
-      // =======================
-      // APPOINTMENTS
-      // =======================
-      async function loadAppointments() {
-        const ref = await db
-          .collection("appointments")
-          .where("patientId", "==", currentUser.uid)
-          .get();
-
-        if (ref.empty) {
-          document.getElementById("appointments").innerText =
-            "No appointments yet.";
-          return;
-        }
-
-        let html = "";
-        ref.forEach((doc) => {
-          let a = doc.data();
-          html += `
-      <div style="padding:10px;border-bottom:1px solid #ccc;">
-        <b>Doctor:</b> ${a.doctorName}<br>
-        <b>Date:</b> ${a.date}<br>
-        <b>Status:</b> ${a.status}
-      </div>
-    `;
-        });
-
-        document.getElementById("appointments").innerHTML = html;
-      }
-
+      /* =======================
+   DOCTORS & APPOINTMENTS
+======================= */
       async function loadDoctors() {
         const snapshot = await db.collection("Doctors").get();
         const select = document.getElementById("doctorSelect");
@@ -289,14 +335,40 @@
         });
       }
 
+      async function loadAppointments() {
+        const ref = await db
+          .collection("appointments")
+          .where("patientId", "==", currentUser.uid)
+          .get();
+
+        if (ref.empty) {
+          document.getElementById("appointments").innerText =
+            "No appointments yet.";
+          return;
+        }
+
+        let html = "";
+        ref.forEach((doc) => {
+          const a = doc.data();
+          html += `
+      <div style="padding:10px;border-bottom:1px solid #ccc;">
+        <b>Doctor:</b> ${a.doctorName}<br>
+        <b>Date:</b> ${a.date}<br>
+        <b>Status:</b> ${a.status}
+      </div>`;
+        });
+
+        document.getElementById("appointments").innerHTML = html;
+      }
+
       async function bookAppointment() {
-        let doctorId = document.getElementById("doctorSelect").value;
-        let date = document.getElementById("apptDate").value;
-        let symptoms = document.getElementById("symptoms").value;
-        let desc = document.getElementById("description").value;
+        const doctorId = document.getElementById("doctorSelect").value;
+        const date = document.getElementById("apptDate").value;
+        const symptoms = document.getElementById("symptoms").value;
+        const desc = document.getElementById("description").value;
 
         if (!doctorId || !date || !symptoms)
-          return alert("Please fill required fields.");
+          return alert("Fill required fields.");
 
         const docRef = await db.collection("Doctors").doc(doctorId).get();
         const doctorData = docRef.data();
@@ -315,10 +387,6 @@
         document.getElementById("appointmentMsg").innerText =
           "Appointment Submitted!";
         loadAppointments();
-      }
-
-      function logout() {
-        auth.signOut().then(() => (window.location.href = "index.html"));
       }
     </script>
   </body>

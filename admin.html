@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -70,11 +70,32 @@
       .btn.warn {
         background: var(--danger);
       }
+
+      /* calendar (full width) */
+      #calendarFullPanel {
+        margin-top: 18px;
+        background: var(--card);
+        border-radius: 12px;
+        padding: 12px;
+        box-shadow: 0 6px 18px rgba(3, 3, 3, 0.06);
+        display: flex;
+        flex-direction: column;
+        min-height: 320px; /* ensures visible space */
+      }
+
+      #calendar {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      /* main layout - now 2 columns because calendar is full-width above */
       .layout {
         display: grid;
-        grid-template-columns: 360px 1fr 420px;
+        grid-template-columns: 360px 1fr;
         gap: 18px;
         margin-top: 18px;
+        align-items: stretch;
       }
       /* left column */
       .panel {
@@ -82,6 +103,9 @@
         border-radius: 12px;
         padding: 16px;
         box-shadow: 0 6px 18px rgba(3, 3, 3, 0.08);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
       }
       .panel h2 {
         margin: 0 0 12px 0;
@@ -114,7 +138,7 @@
         display: flex;
         gap: 8px;
       }
-      /* center - tables and calendar */
+      /* center - tables */
       .center-col {
         display: flex;
         flex-direction: column;
@@ -152,13 +176,6 @@
         border-radius: 8px;
         border: 1px solid #ddd;
         width: 100%;
-      }
-      /* right column */
-      #calendar {
-        background: var(--card);
-        border-radius: 12px;
-        padding: 10px;
-        box-shadow: 0 6px 18px rgba(3, 3, 3, 0.06);
       }
       .full-width {
         grid-column: 1/-1;
@@ -218,9 +235,14 @@
           grid-template-columns: 1fr;
           padding-bottom: 40px;
         }
-        #calendar {
-          order: 3;
+        #calendarFullPanel {
+          order: 1;
         }
+      }
+
+      /* ensure FullCalendar uses full container */
+      .fc {
+        height: 100% !important;
       }
     </style>
   </head>
@@ -236,6 +258,12 @@
           <button class="btn warn" id="logoutBtn">Logout</button>
         </div>
       </header>
+
+      <!-- CALENDAR: moved full width below header -->
+      <div id="calendarFullPanel">
+        <h2>Calendar</h2>
+        <div id="calendar"></div>
+      </div>
 
       <div class="layout">
         <!-- LEFT: Quick lists -->
@@ -408,12 +436,6 @@
             </div>
           </div>
         </div>
-
-        <!-- RIGHT: Calendar & details -->
-        <div class="panel" id="calendarPanel">
-          <h2>Calendar</h2>
-          <div id="calendar"></div>
-        </div>
       </div>
     </div>
 
@@ -472,7 +494,7 @@
       const doctorsTable = document.querySelector("#doctorsTable tbody");
       const patientsTable = document.querySelector("#patientsTable tbody");
       const appointmentsTable = document.querySelector(
-        "#appointmentsTable tbody"
+        "#appointmentsTable tbody",
       );
       const modalBg = document.getElementById("modalBg");
       const modal = document.getElementById("modal");
@@ -520,7 +542,7 @@
           (snap) => {
             renderDoctors(snap);
           },
-          (err) => console.error("Doctors snapshot error:", err)
+          (err) => console.error("Doctors snapshot error:", err),
         );
 
         // patients (users with role patient)
@@ -532,7 +554,7 @@
             (snap) => {
               renderPatients(snap);
             },
-            (err) => console.error("Patients snapshot error:", err)
+            (err) => console.error("Patients snapshot error:", err),
           );
 
         // appointments
@@ -542,7 +564,7 @@
             renderAppointments(snap);
             refreshCalendarEvents(snap);
           },
-          (err) => console.error("Appointments snapshot error:", err)
+          (err) => console.error("Appointments snapshot error:", err),
         );
       }
 
@@ -562,7 +584,7 @@
           }</div></div>
           <div class="controls">
             <button class="btn ghost" onclick='openEditDoctor(${JSON.stringify(
-              d
+              d,
             ).replace(/'/g, "\\'")})'>Edit</button>
             <button class="btn warn" onclick="deleteDoctor('${
               d.id
@@ -596,7 +618,7 @@
           <td>₹${d.fees || "—"}</td>
           <td>
             <button class="btn ghost" onclick='openEditDoctor(${JSON.stringify(
-              d
+              d,
             ).replace(/'/g, "\\'")})'>Edit</button>
             <button class="btn warn" onclick="deleteDoctor('${
               d.id
@@ -620,7 +642,7 @@
           }</div></div>
           <div class="controls">
             <button class="btn ghost" onclick='openEditPatient(${JSON.stringify(
-              p
+              p,
             ).replace(/'/g, "\\'")})'>Edit</button>
             <button class="btn warn" onclick="deletePatient('${
               p.id
@@ -646,7 +668,7 @@
           <td>${escapeHtml(p.role || "—")}</td>
           <td>
             <button class="btn ghost" onclick='openEditPatient(${JSON.stringify(
-              p
+              p,
             ).replace(/'/g, "\\'")})'>Edit</button>
             <button class="btn warn" onclick="deletePatient('${
               p.id
@@ -662,7 +684,7 @@
         const f = apptFilter.value;
         appointmentsTable.innerHTML = "";
         const filtered = rows.filter((r) =>
-          f === "all" ? true : r.status === f
+          f === "all" ? true : r.status === f,
         );
         filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
         filtered.forEach((a) => {
@@ -671,7 +693,7 @@
           <td>${escapeHtml(a.doctorName || "—")}</td>
           <td>${escapeHtml(a.date || "—")}</td>
           <td id="appt-status-${a.id || ""}">${escapeHtml(
-            a.status || "Pending"
+            a.status || "Pending",
           )}</td>
           <td>
             <button class="btn ghost" onclick="viewAppointment('${
@@ -696,13 +718,17 @@
         const calendarEl = document.getElementById("calendar");
         calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: "dayGridMonth",
-          height: 520,
+          height: "100%",
+          expandRows: true,
+          contentHeight: "auto",
+          handleWindowResize: true,
           events: [], // will be populated
         });
         calendar.render();
       }
 
       function refreshCalendarEvents(snapshot) {
+        if (!calendar) return;
         const events = snapshot.docs
           .map((d) => {
             const a = d.data();
@@ -753,7 +779,6 @@
         <div style="margin-top:10px"><strong>Patients</strong><div id="srPatients"></div></div>`;
         modalBody.innerHTML = html;
         modalSave.style.display = "none";
-        showModal();
         // query
         db.collection("Doctors")
           .where("name", "!=", "")
@@ -767,7 +792,7 @@
                 (d.specialization || "").toLowerCase().includes(q)
               ) {
                 htmlD += `<div style="padding:6px;border-bottom:1px solid #eee">${escapeHtml(
-                  d.name
+                  d.name,
                 )} — ${escapeHtml(d.specialization || "")}</div>`;
               }
             });
@@ -786,13 +811,14 @@
                 (p.phone || "").toLowerCase().includes(q)
               ) {
                 htmlP += `<div style="padding:6px;border-bottom:1px solid #eee">${escapeHtml(
-                  p.name
+                  p.name,
                 )} — ${escapeHtml(p.phone || p.email || "")}</div>`;
               }
             });
             document.getElementById("srPatients").innerHTML =
               htmlP || '<div class="empty">No patients</div>';
           });
+        showModal();
       }
 
       // View appointment details
@@ -811,11 +837,11 @@
           <div><b>Symptoms:</b> ${escapeHtml(a.symptoms || "")}</div>
           <div><b>Description:</b> ${escapeHtml(a.description || "")}</div>
           <div style="margin-top:8px"><b>Status:</b> ${escapeHtml(
-            a.status || "Pending"
+            a.status || "Pending",
           )}</div>
           <div style="margin-top:8px"><b>Doctor Notes:</b></div>
           <textarea id="admNotes" style="width:100%;min-height:100px">${escapeHtml(
-            a.doctorNotes || ""
+            a.doctorNotes || "",
           )}</textarea>
         `;
             modalSave.style.display = "inline-block";
@@ -894,10 +920,10 @@
         modalTitle.innerText = `Edit Doctor — ${d.name || ""}`;
         modalBody.innerHTML = `
         <div class="form-row"><input id="ed_name" value="${escapeHtmlAttr(
-          d.name || ""
+          d.name || "",
         )}" placeholder="Name" /></div>
         <div class="form-row"><input id="ed_spec" value="${escapeHtmlAttr(
-          d.specialization || ""
+          d.specialization || "",
         )}" placeholder="Specialization" /></div>
         <div class="form-row"><input id="ed_exp" type="number" value="${
           d.experience || 0
@@ -906,7 +932,7 @@
           d.fees || 0
         }" placeholder="Fees" /></div>
         <div class="form-row"><input id="ed_loc" value="${escapeHtmlAttr(
-          d.location || ""
+          d.location || "",
         )}" placeholder="Location" /></div>
       `;
         modalSave.style.display = "inline-block";
@@ -931,7 +957,7 @@
       async function deleteDoctor(id) {
         if (
           !confirm(
-            "Delete this doctor? This will not delete their auth account."
+            "Delete this doctor? This will not delete their auth account.",
           )
         )
           return;
@@ -968,13 +994,13 @@
         modalTitle.innerText = `Edit Patient — ${p.name || ""}`;
         modalBody.innerHTML = `
         <div class="form-row"><input id="ep_name" value="${escapeHtmlAttr(
-          p.name || ""
+          p.name || "",
         )}" placeholder="Name" /></div>
         <div class="form-row"><input id="ep_email" value="${escapeHtmlAttr(
-          p.email || ""
+          p.email || "",
         )}" placeholder="Email" /></div>
         <div class="form-row"><input id="ep_phone" value="${escapeHtmlAttr(
-          p.phone || ""
+          p.phone || "",
         )}" placeholder="Phone" /></div>
       `;
         modalSave.style.display = "inline-block";
@@ -997,7 +1023,7 @@
       async function deletePatient(id) {
         if (
           !confirm(
-            "Delete this patient record? This will not delete their Auth account."
+            "Delete this patient record? This will not delete their Auth account.",
           )
         )
           return;
@@ -1027,7 +1053,7 @@
               ">": "&gt;",
               '"': "&quot;",
               "'": "&#39;",
-            }[s])
+            })[s],
         );
       }
       function escapeHtmlAttr(str) {
